@@ -23,6 +23,7 @@ const MAPPING = {
   "trash.fill": "delete",
   "pencil": "edit",
   "chevron.right": "chevron-right",
+  "target": "track-changes",
 } as IconMapping;
 
 /**

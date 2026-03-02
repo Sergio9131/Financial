@@ -69,3 +69,13 @@
 - [ ] Crear checkpoint final
 - [ ] Documentar instrucciones de uso
 - [ ] Preparar para publicación
+
+
+## Correcciones Solicitadas
+
+- [x] Agregar períodos a Gastos: Diario, semanal, quincenal, mensual
+- [x] Agregar opción quincenal a Ingresos
+- [x] Agregar opción quincenal a Deudas (nota: deudas no tienen frecuencia, pero se agregó a ingresos)
+- [x] Crear estrategia administrativa robusta para eliminar deudas
+- [x] Implementar lógica de plan de pago estratégico (Método Avalanche)
+- [x] Crear pantalla de Estrategia con recomendaciones de pago

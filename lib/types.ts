@@ -2,7 +2,8 @@
  * Financial entities and types for Smart Finance Manager
  */
 
-export type Frequency = 'once' | 'weekly' | 'monthly' | 'yearly';
+export type Frequency = 'once' | 'weekly' | 'biweekly' | 'monthly' | 'yearly';
+export type ExpenseFrequency = 'daily' | 'weekly' | 'biweekly' | 'monthly';
 export type TransactionType = 'income' | 'expense' | 'debt';
 export type DebtStatus = 'active' | 'paid' | 'overdue';
 
@@ -40,9 +41,35 @@ export interface Expense {
   description: string;
   amount: number;
   categoryId: string;
+  frequency: ExpenseFrequency;
   date: Date;
   createdAt: Date;
   updatedAt: Date;
+}
+
+export interface DebtPaymentPlan {
+  debtId: string;
+  debtName: string;
+  currentBalance: number;
+  monthlyPayment: number;
+  priority: number; // 1 = highest priority
+  estimatedPayoffMonths: number;
+  strategy: string; // Description of the strategy
+  interestRate: number;
+}
+
+export interface StrategicPlan {
+  id: string;
+  createdAt: Date;
+  totalMonthlyIncome: number;
+  totalMonthlyExpenses: number;
+  availableForDebtPayment: number;
+  debtPaymentPlans: DebtPaymentPlan[];
+  recommendations: string[];
+  riskLevel: 'low' | 'medium' | 'high' | 'critical';
+  estimatedDebtFreeDate: Date | null;
+  totalDebtAmount: number;
+  totalMonthlyDebtPayment: number;
 }
 
 export interface FinancialSummary {
@@ -52,6 +79,7 @@ export interface FinancialSummary {
   netBalance: number;
   debtToIncomeRatio: number;
   healthScore: number; // 0-100
+  strategicPlan: StrategicPlan | null;
 }
 
 export interface ExpenseTrend {

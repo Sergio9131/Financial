@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useReducer, useEffect, ReactNode } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { FinanceState, Income, Debt, Expense, ExpenseCategory, FinancialAlert } from './types';
+import { FinanceState, Income, Debt, Expense, ExpenseCategory, FinancialAlert, StrategicPlan, DebtPaymentPlan } from './types';
 
 const STORAGE_KEY = 'finance_data';
 
@@ -26,6 +26,7 @@ const initialState: FinanceState = {
     netBalance: 0,
     debtToIncomeRatio: 0,
     healthScore: 100,
+    strategicPlan: null,
   },
   alerts: [],
 };
@@ -43,6 +44,140 @@ type Action =
   | { type: 'ADD_CATEGORY'; payload: ExpenseCategory }
   | { type: 'SET_STATE'; payload: FinanceState }
   | { type: 'RECALCULATE_SUMMARY' };
+
+// Calculate monthly amounts considering frequency
+const getMonthlyAmount = (amount: number, frequency: string): number => {
+  switch (frequency) {
+    case 'daily':
+      return amount * 30;
+    case 'weekly':
+      return amount * 4.33;
+    case 'biweekly':
+      return amount * 2.17;
+    case 'monthly':
+      return amount;
+    case 'yearly':
+      return amount / 12;
+    default:
+      return amount;
+  }
+};
+
+// Generate strategic debt payment plan
+const generateStrategicPlan = (state: FinanceState): StrategicPlan | null => {
+  if (state.debts.length === 0) return null;
+
+  // Calculate monthly totals
+  const totalMonthlyIncome = state.incomes.reduce((sum, income) => {
+    return sum + getMonthlyAmount(income.amount, income.frequency);
+  }, 0);
+
+  const totalMonthlyExpenses = state.expenses.reduce((sum, expense) => {
+    return sum + getMonthlyAmount(expense.amount, expense.frequency);
+  }, 0);
+
+  const availableForDebtPayment = totalMonthlyIncome - totalMonthlyExpenses;
+
+  if (availableForDebtPayment <= 0) {
+    return {
+      id: Date.now().toString(),
+      createdAt: new Date(),
+      totalMonthlyIncome,
+      totalMonthlyExpenses,
+      availableForDebtPayment,
+      debtPaymentPlans: [],
+      recommendations: [
+        'Tu balance mensual es negativo. Necesitas aumentar ingresos o reducir gastos significativamente.',
+        'Revisa tus gastos y considera eliminar o reducir categorías no esenciales.',
+        'Busca oportunidades para aumentar tus ingresos.',
+      ],
+      riskLevel: 'critical',
+      estimatedDebtFreeDate: null,
+      totalDebtAmount: state.debts.reduce((sum, d) => sum + d.amount, 0),
+      totalMonthlyDebtPayment: 0,
+    };
+  }
+
+  // Sort debts by interest rate (highest first) - Avalanche method
+  const sortedDebts = [...state.debts].sort((a, b) => b.interestRate - a.interestRate);
+
+  const debtPaymentPlans: DebtPaymentPlan[] = [];
+  let remainingAvailable = availableForDebtPayment;
+  let totalMonthlyDebtPayment = 0;
+
+  sortedDebts.forEach((debt, index) => {
+    const priority = index + 1;
+    const monthlyInterest = (debt.amount * debt.interestRate) / 100 / 12;
+    const minimumPayment = Math.max(monthlyInterest * 1.1, 50); // At least 10% more than interest
+
+    // Allocate payment (minimum + share of remaining)
+    const allocatedPayment = Math.min(minimumPayment + remainingAvailable / (sortedDebts.length - index), remainingAvailable);
+    remainingAvailable -= allocatedPayment;
+    totalMonthlyDebtPayment += allocatedPayment;
+
+    const monthsToPayoff = debt.amount > 0 ? Math.ceil(debt.amount / (allocatedPayment - monthlyInterest)) : 0;
+
+    debtPaymentPlans.push({
+      debtId: debt.id,
+      debtName: debt.name,
+      currentBalance: debt.amount,
+      monthlyPayment: allocatedPayment,
+      priority,
+      estimatedPayoffMonths: monthsToPayoff,
+      strategy: `Paga $${allocatedPayment.toFixed(2)} mensuales. Estimado ${monthsToPayoff} meses para liquidar.`,
+      interestRate: debt.interestRate,
+    });
+  });
+
+  // Calculate estimated debt-free date
+  const maxMonths = Math.max(...debtPaymentPlans.map(p => p.estimatedPayoffMonths), 0);
+  const estimatedDebtFreeDate = maxMonths > 0 ? new Date(Date.now() + maxMonths * 30 * 24 * 60 * 60 * 1000) : null;
+
+  // Determine risk level
+  const debtToIncomeRatio = totalMonthlyIncome > 0 ? (state.debts.reduce((sum, d) => sum + d.amount, 0) / totalMonthlyIncome) * 100 : 0;
+  let riskLevel: 'low' | 'medium' | 'high' | 'critical' = 'low';
+  if (debtToIncomeRatio > 100) riskLevel = 'critical';
+  else if (debtToIncomeRatio > 50) riskLevel = 'high';
+  else if (debtToIncomeRatio > 30) riskLevel = 'medium';
+
+  // Generate recommendations
+  const recommendations: string[] = [];
+
+  if (riskLevel === 'critical') {
+    recommendations.push('⚠️ Tu deuda es crítica. Necesitas acción inmediata para reducir deudas.');
+  } else if (riskLevel === 'high') {
+    recommendations.push('Tu deuda es alta. Enfócate en el plan de pago estratégico.');
+  }
+
+  if (availableForDebtPayment > 0) {
+    recommendations.push(`✅ Tienes $${availableForDebtPayment.toFixed(2)} disponibles mensualmente para pagar deudas.`);
+  }
+
+  if (estimatedDebtFreeDate) {
+    const months = debtPaymentPlans[0]?.estimatedPayoffMonths || 0;
+    recommendations.push(`📅 Podrías estar libre de deudas en aproximadamente ${months} meses.`);
+  }
+
+  if (totalMonthlyExpenses > totalMonthlyIncome * 0.8) {
+    recommendations.push('💡 Tus gastos son muy altos. Considera reducirlos para acelerar el pago de deudas.');
+  }
+
+  recommendations.push('🎯 Método Avalanche: Pagamos primero las deudas con mayor interés para ahorrar dinero.');
+
+  return {
+    id: Date.now().toString(),
+    createdAt: new Date(),
+    totalMonthlyIncome,
+    totalMonthlyExpenses,
+    availableForDebtPayment,
+    debtPaymentPlans,
+    recommendations,
+    riskLevel,
+    estimatedDebtFreeDate,
+    totalDebtAmount: state.debts.reduce((sum, d) => sum + d.amount, 0),
+    totalMonthlyDebtPayment,
+  };
+};
 
 const calculateSummary = (state: FinanceState): FinanceState => {
   const totalIncome = state.incomes.reduce((sum, income) => sum + income.amount, 0);
@@ -76,6 +211,9 @@ const calculateSummary = (state: FinanceState): FinanceState => {
     });
   }
 
+  // Generate strategic plan
+  const strategicPlan = generateStrategicPlan(state);
+
   return {
     ...state,
     summary: {
@@ -85,6 +223,7 @@ const calculateSummary = (state: FinanceState): FinanceState => {
       netBalance,
       debtToIncomeRatio,
       healthScore,
+      strategicPlan,
     },
     alerts,
   };

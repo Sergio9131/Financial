@@ -25,6 +25,8 @@ export default function IncomesScreen() {
     const nextPaymentDate = new Date();
     if (formData.frequency === "weekly") {
       nextPaymentDate.setDate(nextPaymentDate.getDate() + 7);
+    } else if (formData.frequency === "biweekly") {
+      nextPaymentDate.setDate(nextPaymentDate.getDate() + 14);
     } else if (formData.frequency === "monthly") {
       nextPaymentDate.setMonth(nextPaymentDate.getMonth() + 1);
     } else if (formData.frequency === "yearly") {
@@ -65,7 +67,7 @@ export default function IncomesScreen() {
                   <View className="flex-1">
                     <Text className="text-foreground font-semibold">{item.name}</Text>
                     <Text className="text-muted text-xs mt-1 capitalize">
-                      {item.frequency === "once" ? "Único" : item.frequency === "weekly" ? "Semanal" : item.frequency === "monthly" ? "Mensual" : "Anual"}
+                      {item.frequency === "once" ? "Único" : item.frequency === "weekly" ? "Semanal" : item.frequency === "biweekly" ? "Quincenal" : item.frequency === "monthly" ? "Mensual" : "Anual"}
                     </Text>
                   </View>
                   <View className="items-end">
@@ -129,7 +131,7 @@ export default function IncomesScreen() {
 
             <Text className="text-foreground font-semibold mb-2">Frecuencia</Text>
             <View className="flex-row gap-2 mb-6">
-              {(["once", "weekly", "monthly", "yearly"] as Frequency[]).map((freq) => (
+              {(["once", "weekly", "biweekly", "monthly", "yearly"] as Frequency[]).map((freq) => (
                 <Pressable
                   key={freq}
                   onPress={() => setFormData({ ...formData, frequency: freq })}
@@ -145,7 +147,7 @@ export default function IncomesScreen() {
                   <Text
                     className={`text-xs font-semibold ${formData.frequency === freq ? "text-white" : "text-foreground"}`}
                   >
-                    {freq === "once" ? "Único" : freq === "weekly" ? "Semanal" : freq === "monthly" ? "Mensual" : "Anual"}
+                    {freq === "once" ? "Único" : freq === "weekly" ? "Semanal" : freq === "biweekly" ? "Quincenal" : freq === "monthly" ? "Mensual" : "Anual"}
                   </Text>
                 </Pressable>
               ))}
