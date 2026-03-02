@@ -6,6 +6,7 @@ export type Frequency = 'once' | 'weekly' | 'biweekly' | 'monthly' | 'yearly';
 export type ExpenseFrequency = 'daily' | 'weekly' | 'biweekly' | 'monthly';
 export type TransactionType = 'income' | 'expense' | 'debt';
 export type DebtStatus = 'active' | 'paid' | 'overdue';
+export type PaymentStrategy = 'avalanche' | 'snowball' | 'hybrid';
 
 export interface Income {
   id: string;
@@ -47,6 +48,17 @@ export interface Expense {
   updatedAt: Date;
 }
 
+// Monthly projection for a debt
+export interface DebtProjection {
+  month: number;
+  monthDate: Date;
+  balance: number;
+  payment: number;
+  interest: number;
+  principal: number;
+}
+
+// Payment plan for a single debt
 export interface DebtPaymentPlan {
   debtId: string;
   debtName: string;
@@ -56,20 +68,50 @@ export interface DebtPaymentPlan {
   estimatedPayoffMonths: number;
   strategy: string; // Description of the strategy
   interestRate: number;
+  totalInterestPaid: number; // Total interest over the life of the debt
+  projections: DebtProjection[]; // Month-by-month breakdown
 }
 
-export interface StrategicPlan {
+// Comparison between different strategies
+export interface StrategyComparison {
+  strategy: PaymentStrategy;
+  name: string;
+  description: string;
+  totalMonthsToPayoff: number;
+  totalInterestPaid: number;
+  totalAmountPaid: number;
+  interestSavings: number; // Compared to minimum payments
+  debtPaymentPlans: DebtPaymentPlan[];
+  recommendations: string[];
+}
+
+// Advanced strategic plan with multiple strategies
+export interface AdvancedStrategicPlan {
   id: string;
   createdAt: Date;
   totalMonthlyIncome: number;
   totalMonthlyExpenses: number;
   availableForDebtPayment: number;
-  debtPaymentPlans: DebtPaymentPlan[];
-  recommendations: string[];
+  
+  // Multiple strategy comparisons
+  strategies: StrategyComparison[];
+  recommendedStrategy: PaymentStrategy;
+  
+  // Overall metrics
   riskLevel: 'low' | 'medium' | 'high' | 'critical';
   estimatedDebtFreeDate: Date | null;
   totalDebtAmount: number;
   totalMonthlyDebtPayment: number;
+  
+  // Advanced insights
+  recommendations: string[];
+  alerts: string[];
+  opportunities: string[];
+  
+  // Financial health metrics
+  debtToIncomeRatio: number;
+  expenseToIncomeRatio: number;
+  savingsRate: number; // Percentage of income available after expenses
 }
 
 export interface FinancialSummary {
@@ -79,7 +121,7 @@ export interface FinancialSummary {
   netBalance: number;
   debtToIncomeRatio: number;
   healthScore: number; // 0-100
-  strategicPlan: StrategicPlan | null;
+  strategicPlan: AdvancedStrategicPlan | null;
 }
 
 export interface ExpenseTrend {
